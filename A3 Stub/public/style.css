@@ -4,7 +4,7 @@ html {
     min-height: 100%;
     margin: 0 auto;
     font-size: 16px;
-    background-color: #FFFFFF;
+    background-color: #ff344c;
 }
 body {
     height: 100%;
@@ -23,6 +23,7 @@ a:link:hover {
 input[type=submit], button {
     cursor: pointer;
     cursor: hand;
+    background-color: #ff344c;
 }
 @media(max-width: 900px) {
     html {

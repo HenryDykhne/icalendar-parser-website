@@ -1,0 +1,7 @@
+
+On page load, Received string '{"foo":"bar"}' from server
+Status: 
+ 
+Last Name 
+Value
+   

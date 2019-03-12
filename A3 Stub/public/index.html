@@ -18,19 +18,26 @@
 </head>
 <body>
     <h3>Download test</h3>
-    If the A3 stub is running and testCalSimpleUTC.ics exists in the uploads/ directory on the server, then clicking on the link below will download it from the server.<br>
+    If the A3 stub is running and testCalSimpleUTC.ics exists in the uploads/ directory on the server, then clicking on the link below will download it from the server.I am a change<br>
     <a href="/uploads/testCalSimpleUTC.ics">testCalSimpleUTC.ics</a>
     <hr>
     <div id="blah">I am blah</div>
+    <div class="form-group">
+        Status: <br><textarea type="text" name="statusBox" value="Temp" style="height:100px;width:300px;overflow:auto;" readonly></textarea>
+        <input type='submit' class="btn btn-secondary", value="Clear"><br>
+    </div>
     <hr>
-    <form ref='someform'
-          id='someform'>
-          <div class="form-group">
-                <label for="entryBox">Last Name</label>
-                <input type="text" class="form-control" id="entryBox" value="Value" placeholder="Placeholder">
-            </div>
+    <form ref='someform' id='someform'>
         <div class="form-group">
-            <input type='submit' class="btn btn-secondary">
+            <label for="entryBox">Last Name</label>
+            <input type="text" class="form-control" id="entryBox" value="Value" placeholder="Placeholder">
+        </div>
+        <div class="form-group">
+            <input type='submit' class="btn btn-secondary" value="Upload Calendar">
+            <input type='submit' class="btn btn-secondary" value="Create Event">
+            <input type='submit' class="btn btn-secondary" value="Create Calendar">
+            <input type='submit' class="btn btn-secondary" value="Create Event">
+
         </div>
     </form>
     <!-- Leave me at the bottom of body -->
