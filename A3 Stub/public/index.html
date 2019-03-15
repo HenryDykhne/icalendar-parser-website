@@ -22,26 +22,81 @@
     <a href="/uploads/testCalSimpleUTC.ics">testCalSimpleUTC.ics</a>
     <hr>
     <div id="blah">I am blah</div>
-    <div class="form-group">
-        Status: <br><textarea type="text" name="statusBox" value="Temp" style="height:100px;width:300px;overflow:auto;" readonly></textarea>
-        <input type='submit' class="btn btn-secondary", value="Clear"><br>
+    <div class="form-group" style="text-align:center;">
+        <form id = "statusBox" >
+            Status: <br><textarea id='status' type="text" name="statusBox" value="Temp" readonly style="height:100px;width:500px;overflow:auto;" ></textarea>
+            <br>
+            <input id='clear' type='submit' class="btn btn-secondary", value="Clear"><br>
+        </form>
     </div>
     <hr>
-    <form ref='someform' id='someform'>
         <div class="form-group">
             <label for="entryBox">Last Name</label>
             <input type="text" class="form-control" id="entryBox" value="Value" placeholder="Placeholder">
         </div>
-        <div class="form-group">
-            <input type='submit' class="btn btn-secondary" value="Upload Calendar">
-            <input type='submit' class="btn btn-secondary" value="Create Event">
-            <input type='submit' class="btn btn-secondary" value="Create Calendar">
-            <input type='submit' class="btn btn-secondary" value="Create Event">
 
+        <div class="container" style="max-height:200px;max-width:100%;overflow-y:scroll;padding:2px;" >
+            <table id="calendar_list" class="table table-striped table-bordered table-sm" cellspacing="0" width="100%">
+                <thead>
+                    <tr>
+                        <th class="th-sm">Calendar List</th>
+                    </tr>
+                    <tr>
+                        <th class="th-sm">File Name</th>
+                        <th class="th-sm">Version</th>
+                        <th class="th-sm">Product ID</th>
+                        <th class="th-sm"># Events</th>
+                        <th class="th-sm"># Properties</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
         </div>
-    </form>
-    <!-- Leave me at the bottom of body -->
-    <script src="/index.js"></script>
+        <div class="form-group">
+            <form action='/upload' method='post' encType="multipart/form-data">
+                <input onchange='validator()' type="file" id="file_selector" name="uploadFile"></input>
+                <input type='submit' id="upload_cal" value='Upload Calendar'></input>
+            </form>
+            <input type='submit' class="btn btn-secondary" value="Create Calendar">
+        </div>
+
+        <div class="container" style="max-height:200px;max-width:100%;overflow-y:scroll;padding:2px;" >
+            <select id="calendar_select" onchange="selectedFile()">
+            </select>
+            <table id="calendar_contents" class="table table-striped table-bordered table-sm" cellspacing="0" width="100%">
+                
+                <thead>
+                    <tr>
+                        <th class="th-sm">Calendar Contents</th>
+                    </tr>
+                    <tr>
+                        <th class="th-sm">Event #</th>
+                        <th class="th-sm">Start Date</th>
+                        <th class="th-sm">Start Time</th>
+                        <th class="th-sm">Summary</th>
+                        <th class="th-sm"># Properties</th>
+                        <th class="th-sm"># Alarms</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+        <br>
+        <div class="eventAdd">
+             <form action="/action_page.php">
+                First name:<br>
+                <input type="text" value="Mickey"><br>
+                Last name:<br>
+                <input type="text" name="lastname" value="Mouse"><br><br>
+                <input type='submit' class="btn btn-secondary" value="Create Event">
+            </form> 
+            
+        </div>
+
+<!-- Leave me at the bottom of body -->
+<script src="/index.js"></script>
 </body>
 </html>
 

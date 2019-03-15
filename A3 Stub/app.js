@@ -3,8 +3,12 @@
 // C library API
 const ffi = require('ffi');
 
+let sharedLib = ffi.Library('./parser/bin/libcombo', {
+  'createCalJSONWrap': [ 'string', [ 'string' ] ], 
+  'createEvtListJSONWrap': [ 'string', [ 'string' ] ], 
+});
 // Express App (Routes)
-const express = require("express");
+const express = require("express"); 
 const app     = express();
 const path    = require("path");
 const fileUpload = require('express-fileupload');
@@ -40,11 +44,13 @@ app.get('/index.js',function(req,res){
 
 //Respond to POST requests that upload files to uploads/ directory
 app.post('/upload', function(req, res) {
+  console.log("uploading");
   if(!req.files) {
     return res.status(400).send('No files were uploaded.');
   }
- 
+  
   let uploadFile = req.files.uploadFile;
+  console.log("uploading "+uploadFile.name);
  
   // Use the mv() method to place the file somewhere on your server
   uploadFile.mv('uploads/' + uploadFile.name, function(err) {
@@ -59,6 +65,7 @@ app.post('/upload', function(req, res) {
 //Respond to GET requests for files in the uploads/ directory
 app.get('/uploads/:name', function(req , res){
   fs.stat('uploads/' + req.params.name, function(err, stat) {
+    console.log(req.params.name)
     console.log(err);
     if(err == null) {
       res.sendFile(path.join(__dirname+'/uploads/' + req.params.name));
@@ -69,6 +76,21 @@ app.get('/uploads/:name', function(req , res){
 });
 
 //******************** Your code goes here ******************** 
+/**** Set up functions from our shared library ****
+
+We create a new object called sharedLib and the C functions become its methods
+
+*/
+
+//*************************************************************
+const folder = './uploads';
+app.get('/files', function(req,res) {
+  let filenames;
+  
+  filenames = fs.readdirSync(folder);
+  res.send(filenames);
+});
+
 
 //Sample endpoint
 app.get('/someendpoint', function(req , res){
@@ -77,5 +99,31 @@ app.get('/someendpoint', function(req , res){
   });
 });
 
+app.get('/getcals', function(req,res){
+  console.log(req.query.filename);
+  let path = "./uploads/"+ req.query.filename;
+  let calJSONstr = sharedLib.createCalJSONWrap(path);
+  console.log(calJSONstr);
+  let calJSON = JSON.parse(calJSONstr);
+  calJSON.filename = req.query.filename;
+  console.log(calJSON);
+  res.send({
+    calJSON
+  });
+});
+
+app.get('/inspectCal', function(req,res){
+  console.log("filename: "+req.query.filename);
+  let path = "./uploads/"+ req.query.filename;
+
+  let calJSON = sharedLib.createEvtListJSONWrap(path);
+  console.log(calJSON);
+  //let calJSON = JSON.parse(calJSONstr);
+  //calJSON.filename = req.query.filename;
+  console.log("Inspect cal: "+calJSON);
+  res.send(calJSON);
+});
+
 app.listen(portNum);
 console.log('Running app at localhost: ' + portNum);
+
