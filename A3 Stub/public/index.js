@@ -58,9 +58,7 @@ $(document).ready(function() {
                 //console.log(name+3);
                 console.log(data2.calJSON)
                 console.log(data2.calJSON.filename)
-                if(data2.calJSON.version == undefined){
-                    $('#calendar_list > tbody').append("<tr><td><a href=\"/uploads/"+data2.calJSON.filename+"\">"+data2.calJSON.filename+"</a></td><td></td><td>Invalid File</td><td></td><td></td></tr>");
-                }else{
+                if(data2.calJSON.version != undefined){
                     $('#calendar_list > tbody').append("<tr><td><a href=\"/uploads/"+data2.calJSON.filename+"\">"+data2.calJSON.filename+"</a></td><td>"+data2.calJSON.version+"</td><td>"+data2.calJSON.prodID+"</td><td>"+data2.calJSON.numEvents+"</td><td>"+data2.calJSON.numProps+"</td></tr>");
                     $('#calendar_select').append("<option value="+data2.calJSON.filename+">"+data2.calJSON.filename+"</option>");
                 

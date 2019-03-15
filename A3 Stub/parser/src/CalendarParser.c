@@ -1499,11 +1499,17 @@ void addEvent(Calendar* cal, Event* toBeAdded){
 char* createCalJSONWrap(char *fileName){
 	Calendar *cal;
 	createCalendar(fileName, &cal);
+	if(validateCalendar(cal)!=OK){
+		return "{}";
+	}
 	return calendarToJSON(cal);
 }
 
 char* createEvtListJSONWrap(char *fileName){
 	Calendar *cal;
 	createCalendar(fileName, &cal);
+	if(validateCalendar(cal)!=OK){
+		return "{}";
+	}
 	return eventListToJSON(cal->events);
 }
