@@ -6,14 +6,14 @@ int main(){
 	ICalErrorCode err = OK;
 	char *errStr;
 	char *str;
-	err = createCalendar("megaCalFolded1.ics", &cal);
+	err = createCalendar("megaCal1.ics", &cal);
 	printf("%s\n", errStr = printError(err));
 	free(errStr);
 	if(cal == NULL){
 		return 0;
 	}
 	str = printCalendar(cal);
-	printf("\n\n%s", str);
+	//printf("\n\n%s", str);
 	free(str);
 	writeCalendar("write.ics", cal);
 	
@@ -27,7 +27,7 @@ int main(){
 		return 0;
 	}
 	str = printCalendar(reCal);
-	printf("\n\n%s\n", str);
+	//printf("\n\n%s\n", str);
 	free(str);
 
 	err = validateCalendar(cal);
@@ -36,11 +36,12 @@ int main(){
 
 	cal->version = 0;
 	err = validateCalendar(cal);
-	printf("%s\n", errStr = printError(err));
+	printf("err: %s\n", errStr = printError(err));
 	free(errStr);
 	deleteCalendar(cal);
 
 	createCalendar("megaCalFolded1.ics", &cal);
+	printf("Here I am\n");
 	memcpy(((Property*)(((Event*)(cal->events->head->data))->properties->head->data))->propName, "DTEND", 6);
 	memcpy(((Property*)(((Event*)(cal->events->head->data))->properties->head->next->data))->propName, "DURATION", 9);
 	err = validateCalendar(cal);
@@ -86,21 +87,9 @@ int main(){
 	deleteCalendar(reCal);
 
 
-	cal = JSONtoCalendar("{\"version\":2,\"prodID\":\"-//hacksw/handcal//NONSGML v1.0//EN\"}");
-	printf("%f\n", cal->version);
-	printf("%s\n", cal->prodID);
-
-	deleteCalendar(cal);
-
-	Event *evt = JSONtoEvent("{\"UID\":\"1234\"}");
-	printf("%s\n", evt->UID);
-	deleteEvent(evt);
-
-	cal = JSONtoCalendar("{\"version\":2,\"prodID\":\"-//hacksw/handcal//NONSGML v1.0//EN\"}");
-	evt = JSONtoEvent("{\"UID\":\"1234\"}");
-	addEvent(cal, evt);
-	printf("%s\n", ((Event*)(cal->events->head->data))->UID);
-
+	createCalendar("megaCalFolded1.ics", &cal);
+	addEvent(cal, JSONtoEvent("{\"UID\":\"uidtest\",\"creationDT\":{\"date\":\"11112233\",\"time\":\"112233\",\"isUTC\":true},\"startDT\":{\"date\":\"11112233\",\"time\":\"112233\",\"isUTC\":false},\"summary\":\"summarytest\",\"numProps\":0,\"numAlarms\":0}"));
+	printf("%s\n", printError(writeCalendar("megaCalFolded1.ics", cal)));
 	deleteCalendar(cal);
 	return 0;
 }

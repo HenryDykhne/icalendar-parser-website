@@ -2,10 +2,14 @@
 
 // C library API
 const ffi = require('ffi');
-
-let sharedLib = ffi.Library('./parser/bin/libcombo', {
+//TODO:check if you must relocate your shared library
+let sharedLib = ffi.Library('./libcombo', {
   'createCalJSONWrap': [ 'string', [ 'string' ] ], 
   'createEvtListJSONWrap': [ 'string', [ 'string' ] ], 
+  'addEventWrap': [ 'string', [ 'string', 'string' ] ], 
+  'addCalWrap': [ 'string', [ 'string', 'string' ] ],
+  'readableAlmListJSONWrap': [ 'string', [ 'string', 'int' ] ],
+  'readablePropListJSONWrap': [ 'string', [ 'string', 'int' ] ],
 });
 // Express App (Routes)
 const express = require("express"); 
@@ -86,7 +90,6 @@ We create a new object called sharedLib and the C functions become its methods
 const folder = './uploads';
 app.get('/files', function(req,res) {
   let filenames;
-  
   filenames = fs.readdirSync(folder);
   res.send(filenames);
 });
@@ -112,12 +115,28 @@ app.get('/getcals', function(req,res){
   });
 });
 
+app.get('/addEvent', function(req,res){
+  console.log("filename: "+req.query.filename);
+  let path = "./uploads/"+ req.query.filename;
+  console.log(JSON.stringify(req.query.event));
+  let calJSON = sharedLib.addEventWrap(path, req.query.event);
+  res.send({});
+});
+
+app.get('/addCal', function(req,res){
+  console.log("Got Here");
+  console.log("filename: "+req.query.filename);
+  let path = "./uploads/"+ req.query.filename;
+  console.log(JSON.stringify(req.query.calendar));
+  let calJSON = sharedLib.addCalWrap(path, req.query.calendar);
+  res.send({});
+});
+
 app.get('/inspectCal', function(req,res){
   console.log("filename: "+req.query.filename);
   let path = "./uploads/"+ req.query.filename;
 
   let calJSON = sharedLib.createEvtListJSONWrap(path);
-  console.log(calJSON);
   //let calJSON = JSON.parse(calJSONstr);
   //calJSON.filename = req.query.filename;
   console.log("Inspect cal: "+calJSON);
@@ -127,3 +146,20 @@ app.get('/inspectCal', function(req,res){
 app.listen(portNum);
 console.log('Running app at localhost: ' + portNum);
 
+app.get('/almList', function(req,res){
+  let path = "./uploads/"+ req.query.filename;
+  let almListJSON = sharedLib.readableAlmListJSONWrap(path, req.query.evtNum);
+  console.log(almListJSON);
+  res.send({
+    almListJSON
+  });
+});
+
+app.get('/propList', function(req,res){
+  let path = "./uploads/"+ req.query.filename;
+  let propListJSON = sharedLib.readablePropListJSONWrap(path, req.query.evtNum);
+  console.log(propListJSON);
+  res.send({
+    propListJSON
+  });
+});

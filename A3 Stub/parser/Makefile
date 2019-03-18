@@ -1,8 +1,11 @@
 CFLAGS = -g -ggdb3 -Wall -std=c11 -pedantic -Iinclude
 
-all: list parser combo
+all: list parser combo combobin
 
 combo: list parser include/LinkedListAPI.h src/LinkedListAPI.c include/CalendarParser.h src/CalendarParser.c
+	gcc ${CFLAGS} -shared bin/list.o -shared bin/cal.o -o ../libcombo.so
+
+combobin: list parser include/LinkedListAPI.h src/LinkedListAPI.c include/CalendarParser.h src/CalendarParser.c
 	gcc ${CFLAGS} -shared bin/list.o -shared bin/cal.o -o bin/libcombo.so
 
 list: include/LinkedListAPI.h src/LinkedListAPI.c

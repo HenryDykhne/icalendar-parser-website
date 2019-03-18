@@ -1,6 +1,6 @@
 html {
     width: 70%;
-    height: 300%;
+    height: 400%;
     min-height: 100%;
     margin: 0 auto;
     font-size: 16px;
@@ -26,6 +26,12 @@ input[type=submit], button {
     background-color: #ff344c;
 }
 
+input[type=button]{
+    cursor: pointer;
+    cursor: hand;
+    background-color: #ff344c;
+}
+
 table.dataTable thead .sorting:after,
 table.dataTable thead .sorting:before,
 table.dataTable thead .sorting_asc:after,
@@ -39,17 +45,13 @@ table.dataTable thead .sorting_desc_disabled:before {
 bottom: .5em;
 }
 
+
 thead th{
     text-align: center;
 }
 
-table.dataTable tbody {
-   flex: 1 1 auto;
-    display: block;
-    overflow-y: scroll;
-}
-
 td{
+    width:200px;
     max-width: 200px;
     word-break: break-all;
 }

@@ -907,7 +907,6 @@ void deleteCalendar(Calendar* obj){
 	}
 	if(obj->properties != NULL){
 		freeList(obj->properties);	
-
 	}
 	if(obj->events != NULL){
 		freeList(obj->events);	
@@ -979,7 +978,7 @@ ICalErrorCode validateProperty(const Property* obj){
 		return OTHER_ERROR;
 	}
 
-	if(strlen(obj->propName) == 0 || strlen(obj->propDescr) > 199){
+	if(strlen(obj->propName) == 0 || strlen(obj->propName) > 199){
 		return OTHER_ERROR;
 	}
 
@@ -1417,30 +1416,12 @@ char* calendarToJSON(const Calendar* cal){
 
 	return str;
 }
-Calendar* JSONtoCalendar(const char* str){
+
+DateTime JSONtoDT(char* str){
+	DateTime dt;
 	char buf[1000] = "";
 	int count = 0;
 	int holder;
-	if(str == NULL){
-		return NULL;
-	}
-	Calendar *cal = malloc(sizeof(Calendar));
-	cal->properties = initializeList(&printProperty, &deleteProperty, &compareProperties);
-	cal->events = initializeList(&printEvent, &deleteEvent, &compareEvents);
-	
-	while(str[count] != ':'){
-		count++;
-	}
-	count++;
-	holder = count;
-	while(str[count] != ','){
-		buf[count - holder] = str[count];
-		count++;
-	}
-	buf[count] = '\0';
-
-	cal->version = atof(buf);
-	count++;
 
 	while(str[count] != ':'){
 		count++;
@@ -1452,11 +1433,35 @@ Calendar* JSONtoCalendar(const char* str){
 		buf[count - holder] = str[count];
 		count++;
 	}
-	buf[count] = '\0';
+	buf[count-holder] = '\0';
+	memcpy(dt.date, buf, sizeof(char)*9);
 
-	memcpy(cal->prodID, buf, sizeof(char)*1000);
+	while(str[count] != ':'){
+		count++;
+	}
+	count+=2;
 
-	return cal;
+	holder = count;
+	while(str[count] != '\"'){
+		buf[count - holder] = str[count];
+		count++;
+	}
+	buf[count-holder] = '\0';
+	memcpy(dt.time, buf, sizeof(char)*7);
+	while(str[count] != ':'){
+		count++;
+	}
+	count+=1;
+
+	holder = count;
+	if(str[count] == 't'){
+		dt.UTC = true;
+	}else{
+		dt.UTC = false;
+	}
+
+	return dt;
+
 }
 
 Event* JSONtoEvent(const char* str){
@@ -1480,15 +1485,129 @@ Event* JSONtoEvent(const char* str){
 		buf[count - holder] = str[count];
 		count++;
 	}
-	buf[count] = '\0';
-
+	buf[count-holder] = '\0';
+	printf("uid: %s\n", buf);
 	memcpy(evt->UID, buf, sizeof(char)*1000);
+
+	while(str[count] != ':'){
+		count++;
+	}
+	count+=1;
+
+	holder = count;
+	while(str[count] != '}'){
+		buf[count - holder] = str[count];
+		count++;
+	}
+	buf[count-holder] = '}';
+	buf[count+1-holder] = '\0';
+	evt->startDateTime = JSONtoDT(buf);
+
+	while(str[count] != ':'){
+		count++;
+	}
+	count+=1;
+
+	holder = count;
+	while(str[count] != '}'){
+		buf[count - holder] = str[count];
+		count++;
+	}
+	buf[count-holder] = '}';
+	buf[count+1-holder] = '\0';
+
+	evt->creationDateTime = JSONtoDT(buf);
+
+	while(str[count] != ':'){
+		count++;
+	}
+	count+=2;
+
+	holder = count;
+	while(str[count] != '\"'){
+		buf[count - holder] = str[count];
+		count++;
+	}
+	buf[count-holder] = '\0';
+
+	Property *tempProp = malloc(sizeof(Property)+strlen(buf)*sizeof(char)+1);
+	memcpy(tempProp->propName, "SUMMARY", 200);
+	memcpy(tempProp->propDescr, buf, strlen(buf)+1);
+	
+	insertSorted(evt->properties, tempProp);
 
 	return evt;
 }
 
+Calendar* JSONtoCalendar(const char* str){
+	char buf[1000] = "";
+	int count = 0;
+	int holder;
+	if(str == NULL){
+		return NULL;
+	}
+	Calendar *cal = malloc(sizeof(Calendar));
+	cal->properties = initializeList(&printProperty, &deleteProperty, &compareProperties);
+	cal->events = initializeList(&printEvent, &deleteEvent, &compareEvents);
+	
+	while(str[count] != ':'){
+		count++;
+	}
+	count++;
+	holder = count;
+	while(str[count] != ','){
+		buf[count - holder] = str[count];
+		count++;
+	}
+	buf[count-holder] = '\0';
+
+	cal->version = atof(buf);
+	count++;
+
+	while(str[count] != ':'){
+		count++;
+	}
+	count+=2;
+
+	holder = count;
+	while(str[count] != '\"'){
+		buf[count - holder] = str[count];
+		count++;
+	}
+	buf[count-holder] = '\0';
+	memcpy(cal->prodID, buf, sizeof(char)*1000);
+
+	while(str[count] != ':'){
+		count++;
+	}
+	count+=2;
+
+	holder = count;
+	while(str[count] != '}'){
+		buf[count - holder] = str[count];
+		count++;
+	}
+	buf[count - holder] = str[count];
+	count++;
+	while(str[count] != '}'){
+		buf[count - holder] = str[count];
+		count++;
+	}
+	buf[count - holder] = str[count];
+	count++;
+	while(str[count] != '}'){
+		buf[count - holder] = str[count];
+		count++;
+	}
+	buf[count-holder] = '}';
+	buf[count+1-holder] = '\0';
+	addEvent(cal, JSONtoEvent(buf));
+	return cal;
+}
+
 void addEvent(Calendar* cal, Event* toBeAdded){
 	if(cal == NULL || toBeAdded == NULL){
+
 		return;
 	}
 	insertBack(cal->events, toBeAdded);//check if you can switch this to insert sorted
@@ -1499,8 +1618,10 @@ void addEvent(Calendar* cal, Event* toBeAdded){
 char* createCalJSONWrap(char *fileName){
 	Calendar *cal;
 	createCalendar(fileName, &cal);
-	if(validateCalendar(cal)!=OK){
-		return "{}";
+	ICalErrorCode err;
+	if((err = validateCalendar(cal))!=OK){
+		deleteCalendar(cal);
+		return printError(err);
 	}
 	return calendarToJSON(cal);
 }
@@ -1508,8 +1629,143 @@ char* createCalJSONWrap(char *fileName){
 char* createEvtListJSONWrap(char *fileName){
 	Calendar *cal;
 	createCalendar(fileName, &cal);
-	if(validateCalendar(cal)!=OK){
-		return "{}";
+	ICalErrorCode err;
+	if((err = validateCalendar(cal))!=OK){
+		deleteCalendar(cal);
+		return printError(err);
 	}
 	return eventListToJSON(cal->events);
+}
+
+char* addEventWrap(char *fileName, char* evtJSON){
+	Calendar *cal;
+	createCalendar(fileName, &cal);
+	addEvent(cal, JSONtoEvent(evtJSON));
+	ICalErrorCode err = validateCalendar(cal);
+	char *errStr = printError(err);
+	if(err!=OK){
+		return errStr;
+	}
+	return printError(writeCalendar(fileName, cal));
+
+}
+
+char* addCalWrap(char *fileName, char* calJSON){
+	Calendar *cal = JSONtoCalendar(calJSON);
+	ICalErrorCode err= validateCalendar(cal);
+	char *errStr = printError(err);
+	deleteCalendar(cal);
+	if(err!=OK){
+		return errStr;
+	}
+
+	return printError(writeCalendar(fileName, cal));
+}
+
+char* readableAlmListJSONWrap(char *fileName, int num){
+	Calendar *cal;
+	Event *evt;
+	int evtNum = 0;
+	createCalendar(fileName, &cal);
+	ICalErrorCode err;
+	if((err = validateCalendar(cal))!=OK){
+		deleteCalendar(cal);
+		return printError(err);
+	}
+	ListIterator iter = createIterator((List *)(cal->events));
+
+	if(cal->events== NULL){
+		deleteCalendar(cal);
+		return "[]";
+	}
+	while((evt = (Event*)nextElement(&iter)) != NULL&& evtNum!=num){
+		evtNum++;
+	}
+	if(evt == NULL){
+		deleteCalendar(cal);
+		return "Bad Event";
+	}
+
+
+	char *str = malloc(sizeof(char)*300);
+	char *jlm;
+	Alarm *alm;
+	str[0] = '\0';
+	if(evt->alarms == NULL||getLength(evt->alarms) == 0){
+		strcat(str, "[]");
+		deleteCalendar(cal);
+		return str;
+	}
+	ListIterator aiter = createIterator((List *)(evt->alarms));
+
+	strcat(str, "[");
+
+	while((alm = (Alarm*)nextElement(&aiter)) != NULL){
+		jlm = printAlarm(alm);
+		str = realloc(str, sizeof(char)*(strlen(jlm)+strlen(str)+2));
+		strcat(str, "\"");
+		strcat(str, jlm);
+		strcat(str, "\",");
+		free(jlm);
+	}
+	//printf("%s\n",str);
+	str[strlen(str)-1] = '\0';
+	strcat(str, "]");
+	//printf("%s\n",str);
+	deleteCalendar(cal);
+	return str;
+}
+
+char* readablePropListJSONWrap(char *fileName, int num){
+	Calendar *cal;
+	Event *evt;
+	int evtNum = 0;
+	createCalendar(fileName, &cal);
+	ICalErrorCode err;
+	if((err = validateCalendar(cal))!=OK){
+		deleteCalendar(cal);
+		return printError(err);
+	}
+	ListIterator iter = createIterator((List *)(cal->events));
+
+	if(cal->events== NULL){
+		deleteCalendar(cal);
+		return "[]";
+	}
+	while((evt = (Event*)nextElement(&iter)) != NULL&& evtNum!=num){
+		evtNum++;
+	}
+	if(evt == NULL){
+		deleteCalendar(cal);
+		return "Bad Event";
+	}
+
+
+	char *str = malloc(sizeof(char)*300);
+	char *jlm;
+	Property *prop;
+	str[0] = '\0';
+	if(evt->properties == NULL||getLength(evt->properties) == 0){
+		strcat(str, "[]");
+		deleteCalendar(cal);
+		return str;
+	}
+	ListIterator aiter = createIterator((List *)(evt->properties));
+
+	strcat(str, "[");
+
+	while((prop = (Property*)nextElement(&aiter)) != NULL){
+		jlm = printProperty(prop);
+		str = realloc(str, sizeof(char)*(strlen(jlm)+strlen(str)+2));
+		strcat(str, "\"");
+		strcat(str, jlm);
+		strcat(str, "\",");
+		free(jlm);
+	}
+	//printf("%s\n",str);
+	str[strlen(str)-1] = '\0';
+	strcat(str, "]");
+	//printf("%s\n",str);
+	deleteCalendar(cal);
+	return str;
 }
