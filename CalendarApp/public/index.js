@@ -1,6 +1,9 @@
 // Put all onload AJAX calls here, and event listeners
 $(document).ready(function() {
     // On page-load AJAX Example
+    deactivate();
+
+
     $.ajax({
         type: 'get',            //Request type
         dataType: 'json',       //Data type - we will use JSON for almost everything 
@@ -168,7 +171,7 @@ function addEvent() {
         return;
     }
 
-    if(formData.UID.value.length ==0){
+    if(formData.UID.value.length == 0){
         document.getElementById("status").value += "UID must not be empty\n";
         scrollBot();
         return;
@@ -246,7 +249,6 @@ function addEvent() {
 }
 
 function addCal() {
-
     let formData = document.getElementById("cal_form");
     let suffix = formData.filename.value.substring(formData.filename.value.length-4);
     if(suffix != ".ics"){
@@ -457,4 +459,320 @@ function showProps(){
     });
 }
 
+function activate(){
+    document.getElementById("store_files").disabled = false;
+    document.getElementById("clear_data").disabled = false;
+    document.getElementById("display_DB_status").disabled = false;
+    document.getElementById("execute_query").disabled = false;
+}
 
+function deactivate(){
+    document.getElementById("store_files").disabled = true;
+    document.getElementById("clear_data").disabled = true;
+    document.getElementById("display_DB_status").disabled = true;
+    document.getElementById("execute_query").disabled = true;
+}
+
+function getFiles(){
+    $.ajax({
+        type:'get',
+        dataType:'json',
+        url:'/getFilesInDB',
+        success: function(data){
+            if(data.error){
+                document.getElementById("status").value += data.error;
+            }else{
+                $('#file_select').empty();
+                for(let i = 0; i<data.length; i++){
+                    $('#file_select').append("<option value="+data[i]+">"+data[i]+"</option>");
+                }
+            }
+            
+        },
+        fail: function(error) {
+            // Non-200 return, do something with error
+            console.log(error); 
+        }
+    });
+}
+
+function login(){
+    let formData = document.getElementById("login_form");
+    let loginJSON = {
+        user: formData.UserName.value,
+        password: formData.Password.value,
+        db: formData.DatabaseName.value
+    }
+    console.log("login about to be attempted");
+    $.ajax({
+        type:'get',
+        dataType:'json',
+        data: loginJSON,
+        url:'/login',
+        success: function(data){
+            //console.log("yoyo");
+            if(data.connected === "Sucessfull connection.\n"){
+                activate();
+                document.getElementById("status").value += data.connected;
+                getFiles();
+                displayDBStatus();
+                
+            }else{
+                document.getElementById("status").value += data.connected;
+                deactivate();
+            }
+            scrollBot();
+        },
+        fail: function(error) {
+            // Non-200 return, do something with error
+            document.getElementById("status").value += data.connected;
+            deactivate();
+            console.log(error); 
+        }
+    });
+
+}
+
+function storeFiles(){
+    $.ajax({
+        type:'get',
+        dataType:'json',
+        url:'/storeFiles',
+        success: function(data){
+            if(data.error){
+                document.getElementById("status").value += "Database not updated.\n"+data.error;
+            }else{
+                document.getElementById("status").value += "Database updated.\n";
+                getFiles();
+            }
+            displayDBStatus();
+            scrollBot();
+        },
+        fail: function(error) {
+            // Non-200 return, do something with error
+            console.log(error); 
+        }
+    });
+}
+
+function clearTables(){
+    $.ajax({
+        type:'get',
+        dataType:'json',
+        url:'/clearTables',
+        success: function(data){
+            document.getElementById("status").value += "Tables Cleared\n";
+            displayDBStatus();
+            getFiles();
+            scrollBot();
+        },
+        fail: function(error) {
+            // Non-200 return, do something with error
+            console.log(error); 
+        }
+    });
+}
+
+function displayDBStatus(){
+    $.ajax({
+        type:'get',
+        dataType:'json',
+        url:'/DBStatus',
+        success: function(data){
+            if(data.error){
+                document.getElementById("status").value += "Could not reach database.\n"+data.error;
+            }else{
+                document.getElementById("status").value += "Database has "+ data.numFiles+" files, "+ data.numEvents+" events, and "+data.numAlarms+" alarms.\n";
+            }
+            scrollBot();
+        },
+        fail: function(error) {
+            // Non-200 return, do something with error
+            console.log(error); 
+        }
+    });
+}
+
+function events_by_start_date(){
+    $.ajax({
+        type:'get',
+        dataType:'json',
+        url:'/events_by_start_date',
+        success: function(data){
+            if(data.error){
+                document.getElementById("status").value += "Could not reach database.\n"+data.error;
+            }else{
+                $('#query_result > tbody').remove();
+                $('#query_result > thead').remove();
+                $('#query_result').append("<thead><tr><th>Events Ordered By Start Date</th></tr><tr><th>Event ID</th><th>Summary</th><th>Start Time</th><th>Location</th><th>Organizer</th></tr></tbody>");
+                for(let i=0; i<data.events.length; i++){
+                    $('#query_result').append("<tbody><tr><td>"+(data.events)[i].event_id+"</td><td>"+(data.events)[i].summary+"</td><td>"+(data.events)[i].start_time+"</td><td>"+(data.events)[i].location+"</td><td>"+(data.events)[i].organizer+"</td></tr></tbody>");
+                    document.getElementById("status").value += "Query, Events ordered by start date: completed succesfully\n";
+                }
+            }
+            scrollBot();
+        },
+        fail: function(error) {
+            // Non-200 return, do something with error
+            console.log(error); 
+        }
+    });
+}
+
+function events_from_specific_file(){
+    let dropdown = document.getElementById('file_select');
+    let selected = dropdown.options[dropdown.selectedIndex].value;
+    $.ajax({
+        type:'get',
+        dataType:'json',
+        data: {file: selected},
+        url:'/events_from_specific_file',
+        success: function(data){
+            if(data.error){
+                document.getElementById("status").value += "Could not reach database.\n"+data.error;
+            }else{
+                $('#query_result > tbody').remove();
+                $('#query_result > thead').remove();
+                $('#query_result').append("<thead><tr><th>Events From File: "+selected+"</th></tr><tr><th>Event ID</th><th>Summary</th><th>Start Time</th><th>Location</th><th>Organizer</th></tr></tbody>");
+                for(let i=0; i<data.events.length; i++){
+                    $('#query_result').append("<tbody><tr><td>"+(data.events)[i].event_id+"</td><td>"+(data.events)[i].summary+"</td><td>"+(data.events)[i].start_time+"</td><td>"+(data.events)[i].location+"</td><td>"+(data.events)[i].organizer+"</td></tr></tbody>");
+                    document.getElementById("status").value += "Query, Events from specific file: completed succesfully\n";
+                }
+            }
+            scrollBot();
+        },
+        fail: function(error) {
+            // Non-200 return, do something with error
+            console.log(error); 
+        }
+    });
+}
+
+function conflicting_events(){
+    $.ajax({
+        type:'get',
+        dataType:'json',
+        url:'/conflicting_events',
+        success: function(data){
+            if(data.error){
+                document.getElementById("status").value += "Could not reach database.\n"+data.error;
+            }else{
+                $('#query_result > tbody').remove();
+                $('#query_result > thead').remove();
+                $('#query_result').append("<thead><tr><th>Events That Conflict With Each Other/th></tr><tr><th>Event ID</th><th>Summary</th><th>Start Time</th><th>Location</th><th>Organizer</th></tr></tbody>");
+                for(let i=0; i<data.events.length; i++){
+                    $('#query_result').append("<tbody><tr><td>"+(data.events)[i].event_id+"</td><td>"+(data.events)[i].summary+"</td><td>"+(data.events)[i].start_time+"</td><td>"+(data.events)[i].location+"</td><td>"+(data.events)[i].organizer+"</td></tr></tbody>");
+                    document.getElementById("status").value += "Query, Events that conflict with each other: completed succesfully\n";
+                }
+            }
+            scrollBot();
+        },
+        fail: function(error) {
+            // Non-200 return, do something with error
+            console.log(error); 
+        }
+    });
+}
+
+function alarms_from_specific_file(){
+    let dropdown = document.getElementById('file_select');
+    let selected = dropdown.options[dropdown.selectedIndex].value;
+    $.ajax({
+        type:'get',
+        dataType:'json',
+        data: {file: selected},
+        url:'/alarms_from_specific_file',
+        success: function(data){
+            if(data.error){
+                document.getElementById("status").value += "Could not reach database.\n"+data.error;
+            }else{
+                $('#query_result > tbody').remove();
+                $('#query_result > thead').remove();
+                $('#query_result').append("<thead><tr><th>Alarms From File: "+selected+"</th></tr><tr><th>Alarm ID</th><th>Action</th><th>Trigger</th></tr></tbody>");
+                for(let i=0; i<data.alarms.length; i++){
+                    console.log("YO");
+                    $('#query_result').append("<tbody><tr><td>"+(data.alarms)[i].alarm_id+"</td><td>"+(data.alarms)[i].action+"</td><td>"+(data.alarms)[i].trigger+"</td></tr></tbody>");
+                    document.getElementById("status").value += "Query, Alarms from specific file: completed succesfully\n";
+                }
+            }
+            scrollBot();
+        },
+        fail: function(error) {
+            // Non-200 return, do something with error
+            console.log(error); 
+        }
+    });
+}
+
+
+function events_with_alarms(){
+    $.ajax({
+        type:'get',
+        dataType:'json',
+        url:'/events_with_alarms',
+        success: function(data){
+            if(data.error){
+                document.getElementById("status").value += "Could not reach database.\n"+data.error;
+            }else{
+                $('#query_result > tbody').remove();
+                $('#query_result > thead').remove();
+                $('#query_result').append("<thead><tr><th>Events That Have Alarms/th></tr><tr><th>Event ID</th><th>Summary</th><th>Start Time</th><th>Location</th><th>Organizer</th></tr></tbody>");
+                for(let i=0; i<data.events.length; i++){
+                    $('#query_result').append("<tbody><tr><td>"+(data.events)[i].event_id+"</td><td>"+(data.events)[i].summary+"</td><td>"+(data.events)[i].start_time+"</td><td>"+(data.events)[i].location+"</td><td>"+(data.events)[i].organizer+"</td></tr></tbody>");
+                    document.getElementById("status").value += "Query, Events that have alarms: completed succesfully\n";
+                }
+            }
+            scrollBot();
+        },
+        fail: function(error) {
+            // Non-200 return, do something with error
+            console.log(error); 
+        }
+    });
+}
+
+function files_with_events_in_guelph(){
+    $.ajax({
+        type:'get',
+        dataType:'json',
+        url:'/files_with_events_in_guelph',
+        success: function(data){
+            if(data.error){
+                document.getElementById("status").value += "Could not reach database.\n"+data.error;
+            }else{
+                $('#query_result > tbody').remove();
+                $('#query_result > thead').remove();
+                $('#query_result').append("<thead><tr><th>Files That Contain Events in Guelph</th></tr><tr><th>File ID</th><th>File Name</th><th>Version</th><th>Product ID</th></tr></tbody>");
+                for(let i=0; i<data.files.length; i++){
+                    $('#query_result').append("<tbody><tr><td>"+(data.files)[i].cal_id+"</td><td>"+(data.files)[i].file_Name+"</td><td>"+(data.files)[i].version+"</td><td>"+(data.files)[i].prod_id+"</td></tr></tbody>");
+                    document.getElementById("status").value += "Query, Files with events located in guelph: completed succesfully\n";
+                }
+            }
+            scrollBot();
+        },
+        fail: function(error) {
+            // Non-200 return, do something with error
+            console.log(error); 
+        }
+    });
+}
+
+function execute_query(){
+    let dropdown = document.getElementById('query_select');
+    let selected = dropdown.options[dropdown.selectedIndex].value;
+    if(selected === "events_by_start_date"){
+        events_by_start_date();
+    }else if(selected === "events_from_specific_file"){
+        events_from_specific_file();
+    }else if(selected === "conflicting_events"){
+        conflicting_events();
+    }else if(selected === "alarms_from_specific_file"){
+        alarms_from_specific_file();
+    }else if(selected === "events_with_alarms"){
+        events_with_alarms();
+    }else if(selected){
+        files_with_events_in_guelph();
+    }
+    displayDBStatus();
+    scrollBot();
+}

@@ -52,13 +52,14 @@
             </form>
         </div>
         <div>
+            Calendar Select: 
             <select id="calendar_select" onchange="selectedFile()"></select><br>
+            Event Select: 
             <select id="event_select"></select>
             <button id="show_alarms" type="button" onclick="showAlarms()">Show alarms of chosen event.</button>
             <button id="show_props" type="button" onclick="showProps()">Show optional properties of chosen event.</button><br>
         </div>
         <div class="container" style="max-height:200px;max-width:100%;overflow-y:scroll;padding:2px;" >
-
             <table id="calendar_contents" class="table table-striped table-bordered table-sm" cellspacing="0" width="100%">
                 <thead>
                     <tr>
@@ -127,12 +128,52 @@
                 Summary:<br>
                 <textarea id='summary' type="text" value="Temp" style="height:100px;width:300px;overflow:auto;" ></textarea>
                 <button id="add_event" type="button" onclick="addEvent()" >Add Event</button>
-
             </form> 
-            
+        </div>
+        <br>
+        <div class="dblogin" style="border:3px solid black; float:left; min-width:100%">
+             <form id="login_form">
+                Login:<br>
+                Username:
+                <input id="UserName" type="text" value="">
+                Password:
+                <input id="Password" type="text" value="">
+                Database Name:
+                <input id="DatabaseName" type="text" value="">
+                <button id="log_in" type="button" onclick="login()">Login</button>
+            </form> 
         </div>
 
-
+        <div class="dbcontrol" style="border:3px solid black; float:left; min-width:100%">
+            Database Functionality: <br>
+            <button id="store_files" type="button" onclick="storeFiles()">Store Files</button>
+            <button id="clear_data" type="button" onclick="clearTables()">Clear All Data</button>
+            <button id="display_DB_status" type="button" onclick="displayDBStatus()">Display Database Status</button>
+            <br>
+            Select Query (Starred queries require a file to be selected): 
+            <select id="query_select" onchange="">
+                <option value="events_by_start_date">Show Events by Start Date</option>
+                <option value="events_from_specific_file">Show Events from Selected File *</option>
+                <option value="conflicting_events">Show Conflicting Events</option>
+                <option value="alarms_from_specific_file">Show Alarms from Selected File *</option>
+                <option value="events_with_alarms">Show Events that contain Alarms</option>
+                <option value="files_with_events_in_guelph">Files that contain Events located in GUELPH</option>
+            </select>
+            Select File for Query: 
+            <select id="file_select"></select>
+            <button id="execute_query" type="button" onclick="execute_query()">Execute Query</button>
+        </div>
+        <div class="container" style="max-height:200px;max-width:100%;overflow-y:scroll;padding:2px;" >
+            <table id="query_result" class="table table-striped table-bordered table-sm" cellspacing="0" width="100%">
+                <thead>
+                    <tr>
+                        <th class="th-sm">No Query Run Yet</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
 <!-- Leave me at the bottom of body -->
 <script src="/index.js"></script>
 </body>

@@ -1324,7 +1324,8 @@ char* dtToJSON(DateTime prop){
 }
 
 char* eventToJSON(const Event* event){
-	char *str = malloc(sizeof(char)*300);
+	char *str = calloc(150, sizeof(char));
+	int len = 150;
 	if(event == NULL){
 		strcat(str, "{}");
 		return str;
@@ -1350,20 +1351,52 @@ char* eventToJSON(const Event* event){
 	ListIterator iter = createIterator(event->properties);
 	while((prop = (Property*)nextElement(&iter)) != NULL){
 		if(strcmp(prop->propName,"SUMMARY") == 0){
-			str = realloc(str, sizeof(char)*(strlen(prop->propDescr)+strlen(str)+3));
+			str = realloc(str, sizeof(char)*(strlen(prop->propDescr)+strlen(str)));
+			len = strlen(prop->propDescr)+strlen(str);
 			sum = prop->propDescr;
 		}
 	}
-
+	str = realloc(str, sizeof(char)*(len+25));
 	strcat(str, sum);
-	strcat(str, "\"}");
+	strcat(str, "\"");
 
+	strcat(str, ",\"organizer\":\"");
+
+	sum = "";
+	iter = createIterator(event->properties);
+	while((prop = (Property*)nextElement(&iter)) != NULL){
+		if(strcmp(prop->propName,"ORGANIZER") == 0){
+			str = realloc(str, sizeof(char)*(strlen(prop->propDescr)+strlen(str)));
+			len = strlen(prop->propDescr)+strlen(str);
+			sum = prop->propDescr;
+		}
+	}
+	str = realloc(str, sizeof(char)*(len+25));
+	strcat(str, sum);
+	strcat(str, "\"");
+
+	strcat(str, ",\"location\":\"");
+
+	sum = "";
+	iter = createIterator(event->properties);
+	while((prop = (Property*)nextElement(&iter)) != NULL){
+		if(strcmp(prop->propName,"LOCATION") == 0){
+			str = realloc(str, sizeof(char)*(strlen(prop->propDescr)+strlen(str)));
+			len = strlen(prop->propDescr)+strlen(str);
+			sum = prop->propDescr;
+		}
+	}
+	str = realloc(str, len*(strlen(str)+25));
+	strcat(str, sum);
+
+	strcat(str, "\"}");
+	//printf("%s\n", str);
 	return str;
 }
 
 
 char* eventListToJSON(const List* eventList){
-	char *str = malloc(sizeof(char)*300);
+	char *str = malloc(sizeof(char)*500);
 	char *jvt;
 	Event *evt;
 	str[0] = '\0';
@@ -1380,6 +1413,7 @@ char* eventListToJSON(const List* eventList){
 		str = realloc(str, sizeof(char)*(strlen(jvt)+strlen(str)+2));
 		strcat(str, jvt);
 		strcat(str, ",");
+		printf("length: %ld", strlen(str));
 		free(jvt);
 	}
 	str[strlen(str)-1] = '\0';
@@ -1630,6 +1664,7 @@ char* createCalJSONWrap(char *fileName){
 char* createEvtListJSONWrap(char *fileName){
 	Calendar *cal;
 	createCalendar(fileName, &cal);
+	printf("filename: %s\n", fileName);
 	ICalErrorCode err;
 	if((err = validateCalendar(cal))!=OK){
 		char *errStr = malloc(sizeof(char)*100);
@@ -1704,6 +1739,81 @@ char* addCalWrap(char *fileName, char* calJSON){
 	strcat(errStr,printError(err));
 	strcat(errStr,"\"}");
 	return errStr;
+}
+
+char* alarmToJSON(Alarm *alm){
+	char *str = calloc(300, sizeof(char));
+	if(alm == NULL){
+		strcat(str, "{}");
+		return str;
+	}
+	
+	str[0] = '\0';
+	strcat(str, "{\"action\":\"");
+	strcat(str, alm->action);
+	strcat(str, "\",\"trigger\":\"");
+	str = realloc(str, sizeof(char)*(strlen(str)+strlen(alm->trigger)+4));
+	strcat(str, alm->trigger);
+	strcat(str, "\"}");
+	return str;
+}
+
+char* createAlmListJSONWrap(char* fileName, int num){
+	Calendar *cal;
+	Event *evt;
+	int evtNum = 0;
+	createCalendar(fileName, &cal);
+	ICalErrorCode err;
+	if((err = validateCalendar(cal))!=OK){
+		char *errStr = malloc(sizeof(char)*100);
+		errStr[0]='\0';
+		deleteCalendar(cal);
+		strcat(errStr, "{\"error\":\"");
+		strcat(errStr,printError(err));
+		strcat(errStr,"\"}");
+		return errStr;
+	}
+	ListIterator iter = createIterator((List *)(cal->events));
+
+	if(cal->events== NULL){
+		deleteCalendar(cal);
+		return "{\"error\":\"Bad Event\"}";
+	}
+	while((evt = (Event*)nextElement(&iter)) != NULL&& evtNum!=num){
+		evtNum++;
+	}
+	if(evt == NULL){
+		deleteCalendar(cal);
+		return "{\"error\":\"Bad Event\"}";
+	}
+
+
+	char *str = malloc(sizeof(char)*300);
+	char *jlm;
+	Alarm *alm;
+	str[0] = '\0';
+	if(evt->alarms == NULL||getLength(evt->alarms) == 0){
+		strcat(str, "[]");
+		deleteCalendar(cal);
+		return str;
+	}
+	ListIterator aiter = createIterator((List *)(evt->alarms));
+
+	strcat(str, "[");
+
+	while((alm = (Alarm*)nextElement(&aiter)) != NULL){
+		jlm = alarmToJSON(alm);
+		str = realloc(str, sizeof(char)*(strlen(jlm)+strlen(str)+4));
+		strcat(str, jlm);
+		strcat(str, ",");
+		free(jlm);
+	}
+	//printf("%s\n",str);
+	str[strlen(str)-1] = '\0';
+	strcat(str, "]");
+	//printf("%s\n",str);
+	deleteCalendar(cal);
+	return str;
 }
 
 char* readableAlmListJSONWrap(char *fileName, int num){

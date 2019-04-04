@@ -80,7 +80,6 @@ typedef struct ical {
 
 
 
-
 /** Function to create a Calendar object based on the contents of an iCalendar file.
  *@pre File name cannot be an empty string or NULL.  File name must have the .ics extension.
        File represented by this name must exist and must be readable.

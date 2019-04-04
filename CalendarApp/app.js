@@ -1,4 +1,6 @@
 'use strict'
+//sql
+const mysql = require('mysql');
 
 // C library API
 const ffi = require('ffi');
@@ -10,6 +12,8 @@ let sharedLib = ffi.Library('./libcombo', {
   'addCalWrap': [ 'string', [ 'string', 'string' ] ],
   'readableAlmListJSONWrap': [ 'string', [ 'string', 'int' ] ],
   'readablePropListJSONWrap': [ 'string', [ 'string', 'int' ] ],
+  'createAlmListJSONWrap': [ 'string', [ 'string', 'int' ] ],
+  
 });
 // Express App (Routes)
 const express = require("express"); 
@@ -167,5 +171,249 @@ app.get('/propList', function(req,res){
   console.log(propListJSON);
   res.send({
     propListJSON
+  });
+});
+
+let connection;
+app.get('/login', function(req , res){
+  connection = mysql.createConnection({
+    host     : 'dursley.socs.uoguelph.ca',
+    user     : req.query.user,
+    password : req.query.password,
+    database : req.query.db
+  });
+
+  connection.connect(function (err){
+    if(err){
+      console.log(err);
+      res.send({connected: "Unsucessfull connection.\n"});
+    }else{
+      connection.query("CREATE TABLE IF NOT EXISTS FILE ( cal_id INT AUTO_INCREMENT PRIMARY KEY, \
+      file_Name VARCHAR(60) NOT NULL, \
+      version INT NOT NULL, \
+      prod_id VARCHAR(256) NOT NULL )", function (err, rows, fields) {
+        if (err) console.log("Something went wrong. "+err);
+      });
+
+      connection.query("CREATE TABLE IF NOT EXISTS EVENT ( event_id INT AUTO_INCREMENT PRIMARY KEY, \
+      summary VARCHAR(1024), \
+      start_time DATETIME NOT NULL, \
+      location VARCHAR(60), \
+      organizer VARCHAR(256), \
+      cal_file INT NOT NULL, \
+      FOREIGN KEY(cal_file) REFERENCES FILE(cal_id) ON DELETE CASCADE )", function (err, rows, fields) {
+        if (err) console.log("Something went wrong. "+err);
+      });
+
+      connection.query("CREATE TABLE IF NOT EXISTS ALARM ( alarm_id INT AUTO_INCREMENT PRIMARY KEY, \
+      action VARCHAR(256) NOT NULL, \
+      `trigger` VARCHAR(256) NOT NULL, \
+      event INT NOT NULL, \
+      FOREIGN KEY(event) REFERENCES EVENT(event_id) ON DELETE CASCADE )", function (err, rows, fields) {
+        if (err) console.log("Something went wrong. "+err);
+      });
+      res.send({connected: "Sucessfull connection.\n"});
+    }
+  });
+});
+
+
+app.get('/storeFiles', function(req,res){
+  let filenames;
+  filenames = fs.readdirSync(folder);
+  //connection.query("DELETE FROM FILE");
+  let i = 0;
+  for(i = 0; i<filenames.length; i++){
+    let path = "./uploads/"+filenames[i];
+    let calJSONstr = sharedLib.createCalJSONWrap(path);
+    let calJSON = JSON.parse(calJSONstr);
+    calJSON.filename = filenames[i];
+    let temp = filenames[i];
+    connection.query("SELECT EXISTS(SELECT 1 FROM FILE WHERE file_Name='"+temp+"') AS fileExists;", function(err3, result, fields3){
+      if(err3){
+            console.log(err3);
+            res.send({
+              error: "failed connection\n"
+            });
+      }
+      if(calJSON.version != undefined && result[0].fileExists === 0){
+        connection.query("INSERT INTO FILE (file_Name, version, prod_id) VALUES ('"+calJSON.filename+"','"+calJSON.version+"','"+calJSON.prodID+"');");
+        connection.query("SELECT * FROM FILE WHERE \""+temp+"\" = file_Name;", function(err, rows, fields){
+          if(err){
+            console.log(err);
+            res.send({
+              error: "failed connection\n"
+            });
+          }
+
+          console.log("fields = "+ fields);
+          if(rows === null || rows === undefined){
+            res.send({
+              error: "could not load file\n"
+            });
+          }
+          console.log("rows = "+ rows[0].cal_id);
+          let evtList = JSON.parse(sharedLib.createEvtListJSONWrap(path));
+          console.log("im right here\n");
+          let j = 0;
+          for(j = 0; j<evtList.length; j++){
+            let evtJSON = evtList[j];
+            console.log(evtJSON);
+            let start = evtJSON.startDT.date.slice(0,4)+"/"+evtJSON.startDT.date.slice(4,6)+"/"+evtJSON.startDT.date.slice(6,8)+" "+evtJSON.startDT.time.slice(0,2)+":"+evtJSON.startDT.time.slice(2,4)+":"+evtJSON.startDT.time.slice(4,6);
+            console.log(start);
+            connection.query("INSERT INTO EVENT (summary, start_time, location, organizer, cal_file) VALUES ('"+evtJSON.summary+"','"+start+"','"+evtJSON.location+"', '"+evtJSON.organizer+"', '"+ rows[0].cal_id +"');");
+          
+            let almList = JSON.parse(sharedLib.createAlmListJSONWrap(path, j));
+            console.log(almList);
+            let k = 0;
+            for(k = 0; k<almList.length; k++){
+              let almJSON = almList[k];
+              console.log(almJSON);
+              connection.query("SELECT * FROM EVENT ORDER BY event_id DESC LIMIT 1;", function(err2, rows2, fields2){
+                if(err2){
+                  console.log(err2);
+                  res.send({
+                    error: "could not load event\n"
+                  });
+                }else{
+                  connection.query("INSERT INTO ALARM (action, `trigger`, event) VALUES ('"+almJSON.action+"','"+almJSON.trigger+"','"+rows2[0].event_id+"');");
+                }
+              });
+            }
+          }
+        });
+      }
+    });
+  }
+  res.send({
+    temp: "done"
+  });
+});
+
+app.get('/clearTables', function(req,res){
+ //connection.query("DELETE FROM ALARM");
+ //connection.query("DELETE FROM EVENT");
+ connection.query("DELETE FROM FILE");
+  res.send({
+    temp: "temp"
+  });
+});
+
+app.get('/getFilesInDB', function(req,res){
+  connection.query("SELECT file_Name FROM FILE;", function(err, result, fields){
+    if(err){
+      res.send({
+        error: err + "\n"
+      });
+    }
+    let namesJSON = [];
+    for(let i = 0; i<result.length; i++){
+      namesJSON.push(result[i].file_Name);
+    }
+    res.send(namesJSON);
+  });
+});
+
+app.get('/DBStatus', function(req,res){
+  connection.query("SELECT COUNT(*) AS numFiles FROM FILE;", function(err, result, fields){
+    if(err){
+      res.send({
+        error: err + "\n"
+      });
+    }
+    const files = result[0].numFiles;
+    connection.query("SELECT COUNT(*) AS numEvents FROM EVENT;", function(err, result, fields){
+      if(err){
+        res.send({
+          error: err + "\n"
+        });
+      }
+      const events = result[0].numEvents;
+      connection.query("SELECT COUNT(*) AS numAlarms FROM ALARM;", function(err, result, fields){
+        if(err){
+          res.send({
+            error: err + "\n"
+          });
+        }
+        const alarms = result[0].numAlarms;
+        res.send({
+          numFiles: files,
+          numEvents: events,
+          numAlarms: alarms
+        });
+      });
+    });
+  });
+});
+
+app.get('/events_by_start_date', function(req,res){
+  connection.query("SELECT * FROM EVENT ORDER BY start_time;", function(err, result, fields){
+    if(err){
+      console.log(err);
+      res.send({
+        error: err + "\n"
+      });
+    }
+    res.send({events:result});
+  });
+});
+
+app.get('/events_from_specific_file', function(req,res){
+  connection.query("SELECT * FROM FILE, EVENT WHERE ( FILE.cal_id=EVENT.cal_file AND file_Name='"+req.query.file+"' ) ORDER BY start_time;", function(err, result, fields){
+    if(err){
+      console.log(err);
+      res.send({
+        error: err + "\n"
+      });
+    }
+    res.send({events:result});
+  });
+});
+
+app.get('/conflicting_events', function(req,res){
+  connection.query("SELECT * FROM EVENT WHERE start_time IN (SELECT start_time FROM EVENT GROUP BY start_time HAVING COUNT(*) > 1) ORDER BY start_time;", function(err, result, fields){
+    if(err){
+      console.log(err);
+      res.send({
+        error: err + "\n"
+      });
+    }
+    res.send({events:result});
+  });
+});
+
+app.get('/alarms_from_specific_file', function(req,res){
+  connection.query("SELECT * FROM FILE, EVENT, ALARM WHERE ( FILE.cal_id=EVENT.cal_file AND EVENT.event_id=ALARM.event AND file_Name='"+req.query.file+"' ) ORDER BY start_time;", function(err, result, fields){
+    if(err){
+      console.log(err);
+      res.send({
+        error: err + "\n"
+      });
+    }
+    res.send({alarms:result});
+  });
+});
+
+app.get('/events_with_alarms', function(req,res){
+  connection.query(" SELECT * FROM EVENT, ALARM WHERE ( EVENT.event_id=ALARM.event) GROUP BY event_id ORDER BY event_id;", function(err, result, fields){
+    if(err){
+      console.log(err);
+      res.send({
+        error: err + "\n"
+      });
+    }
+    res.send({events:result});
+  });
+});
+
+app.get('/files_with_events_in_guelph', function(req,res){
+  connection.query("SELECT * FROM FILE, EVENT WHERE (EVENT.location='GUELPH' AND FILE.cal_id=EVENT.cal_file) GROUP BY cal_id ORDER BY cal_id", function(err, result, fields){
+    if(err){
+      console.log(err);
+      res.send({
+        error: err + "\n"
+      });
+    }
+    res.send({files:result});
   });
 });
